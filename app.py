@@ -110,9 +110,6 @@ def index():
                            casual_translation=casual_translation, 
                            input_text=input_text)
 
-if __name__ == "__main__":
-    app.run(debug=True)
-
 import os
 
 if __name__ == "__main__":
