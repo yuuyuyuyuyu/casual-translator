@@ -1,41 +1,49 @@
-import os
-from flask import Flask, render_template, request
-import deepl
+# app.py
+from flask import Flask, request, render_template
 import requests
-from dotenv import load_dotenv
-
-load_dotenv()  # .env ファイルの読み込み
+import google.generativeai as genai
 
 app = Flask(__name__)
 
-DEEPL_API_KEY = os.getenv("229b5cbc-ef03-4d61-b638-843da6e03cee:fx")
-PALM_API_KEY = os.getenv("AIzaSyBdUuk7kdfb7wijwFRue9wRIjluEcFms6o")
-translator = deepl.Translator(DEEPL_API_KEY)
+# APIキー（例。実際には適宜書き換え）
+DEEPL_API_KEY = "229b5cbc-ef03-4d61-b638-843da6e03cee:fx"
+GENIE_API_KEY = "AIzaSyBdUuk7kdfb7wijwFRue9wRIjluEcFms6o"
 
-def convert_to_casual(text, lang):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={PALM_API_KEY}"
-    headers = {"Content-Type": "application/json"}
-    prompt = f"以下のフォーマルな日本語を自然なカジュアル口語にしてください:\n{text}" if lang == "ja" else f"Please make the following English text casual:\n{text}"
-    body = {
-        "contents": [{"role": "user", "parts": [{"text": prompt}]}]
-    }
-    response = requests.post(url, headers=headers, json=body)
-    result = response.json()
-    return result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "(変換に失敗しました)")
+genai.configure(api_key=GENIE_API_KEY)  # Gemini APIキー設定
 
-@app.route("/", methods=["GET", "POST"])
+@app.route('/', methods=['GET', 'POST'])
 def index():
     result = ""
-    if request.method == "POST":
-        input_text = request.form["text"]
-        direction = request.form["direction"]
-        if direction == "ja_to_en":
-            en = translator.translate_text(input_text, target_lang="EN-US").text
-            result = convert_to_casual(en, "en")
-        else:
-            ja = translator.translate_text(input_text, target_lang="JA").text
-            result = convert_to_casual(ja, "ja")
-    return render_template("index.html", result=result)
+    original = ""
+    if request.method == 'POST':
+        text = request.form['text']
+        direction = request.form['direction']  # 'ja-en' or 'en-ja'
+        original = text  # 元の入力を保存
 
-if __name__ == "__main__":
-    app.run(debug=True)
+        # 1. DeepL APIで翻訳
+        #   https://api.deepl.com/v2/translate にPOSTし、text, target_lang, auth_keyを送信:contentReference[oaicite:3]{index=3}
+        params = {
+            "auth_key": DEEPL_API_KEY,
+            "text": text,
+            "target_lang": "EN" if direction=="ja-en" else "JA"
+        }
+        response = requests.post("https://api.deepl.com/v2/translate", data=params)
+        response.raise_for_status()
+        deepl_data = response.json()
+        # DeepLのJSONは {'translations':[{'detected_source_language':..., 'text':...}]} の形式
+        translated = deepl_data["translations"][0]["text"]  # 翻訳結果のテキストを取得:contentReference[oaicite:4]{index=4}
+
+        # 2. Gemini APIでカジュアル変換
+        #   Google Generative AI SDKでclientを作成し、generate_contentメソッドを呼び出す例:contentReference[oaicite:5]{index=5}
+        prompt = f"「{translated}」をもっとカジュアルな口調に書き換えてください。"
+        client = genai.Client()
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt
+        )
+        casual = response.text  # Geminiによる変換結果
+
+        result = casual  # 最終的な結果
+
+    return render_template('index.html', result=result, original=original)
+
