@@ -2,9 +2,17 @@ import deepl
 import requests
 import json
 import os
-from flask import Flask
+from flask import Flask, render_template
 
-app = Flask(__name__)  # ← これが必要！
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return render_template('index.html')  # index.html が templates フォルダにある場合
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
 
 # 環境変数からAPIキーを取得
 DEEPL_API_KEY = os.getenv("DEEPL_API_KEY", "229b5cbc-ef03-4d61-b638-843da6e03cee:fx")  # 環境変数から取得（指定がない場合、デフォルト値）
