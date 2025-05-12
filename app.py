@@ -41,20 +41,26 @@ def process_text(text):
     if text.isascii():
         ja = translator.translate_text(text, target_lang="JA").text.strip()
         casual = convert_to_casual(ja, lang="ja")
-        return f"<b>英語→日本語（DeepL）:</b><br>{ja}<br><b>カジュアル日本語:</b><br>{casual}"
+        return ja, casual
     else:
         en = translator.translate_text(text, target_lang="EN-US").text.strip()
         casual = convert_to_casual(en, lang="en")
-        return f"<b>日本語→英語（DeepL）:</b><br>{en}<br><b>カジュアル英語:</b><br>{casual}"
+        return en, casual
 
 # Webルート
 @app.route("/", methods=["GET", "POST"])
 def index():
-    result = ""
+    error = None
+    formal_translation = casual_translation = input_text = ""
+
     if request.method == "POST":
-        input_text = request.form.get("text", "")
-        if input_text.strip():
-            result = process_text(input_text.strip())
+        input_text = request.form.get("input_text", "").strip()
+        
+        if not input_text:
+            error = "※ 入力をしてください。"
+        else:
+            formal_translation, casual_translation = process_text(input_text)
+
     return render_template_string("""
     <!DOCTYPE html>
     <html lang="ja">
@@ -63,67 +69,122 @@ def index():
         <title>カジュアル翻訳ツール</title>
         <style>
             body {
-                font-family: sans-serif;
-                background-color: #f5f5f5;
-                text-align: center;
-                padding: 50px;
-            }
-            h2 {
-                font-size: 2em;
-                margin-bottom: 30px;
-            }
-            form {
+                font-family: Arial, sans-serif;
+                background-color: #f4f4f4;
+                margin: 0;
+                height: 100vh;
                 display: flex;
-                flex-direction: column;
+                justify-content: center;
                 align-items: center;
             }
-            textarea {
-                width: 60%;
-                height: 120px;
-                font-size: 1.1em;
-                padding: 12px;
-                border-radius: 10px;
-                border: 1px solid #ccc;
-                resize: none;
+
+            .container {
+                text-align: center;
+                background-color: #ffffff;
+                padding: 20px;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                border-radius: 8px;
+                width: 80%;
+                max-width: 600px;
             }
-            input[type="submit"] {
-                margin-top: 20px;
-                padding: 10px 30px;
-                font-size: 1em;
-                background-color: #007BFF;
+
+            h1 {
+                color: #333;
+            }
+
+            textarea {
+                width: 100%;
+                padding: 10px;
+                font-size: 16px;
+                border-radius: 4px;
+                border: 1px solid #ccc;
+                resize: vertical;
+            }
+
+            button {
+                padding: 10px 20px;
+                font-size: 16px;
+                background-color: #4CAF50;
                 color: white;
                 border: none;
-                border-radius: 8px;
+                border-radius: 4px;
                 cursor: pointer;
+                margin-top: 10px;
             }
-            input[type="submit"]:hover {
-                background-color: #0056b3;
+
+            button:hover {
+                background-color: #45a049;
             }
-            .result {
-                margin-top: 40px;
-                text-align: left;
-                width: 60%;
-                margin-left: auto;
-                margin-right: auto;
-                font-size: 1.1em;
-                background-color: #fff;
-                padding: 20px;
-                border-radius: 10px;
-                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+
+            .result-container {
+                margin-top: 20px;
+            }
+
+            .result-container p {
+                font-size: 16px;
+                color: #555;
+            }
+
+            .input-container, .result-container {
+                margin-bottom: 20px;
+            }
+
+            .input-container {
+                background-color: #fafafa;
+                border: 1px solid #ddd;
+                padding: 10px;
+            }
+
+            .error {
+                color: red;
+                margin-top: 10px;
             }
         </style>
+        <script>
+            // Enterキーでフォーム送信
+            document.addEventListener("DOMContentLoaded", function() {
+                const form = document.querySelector("form");
+                const textarea = document.querySelector("textarea");
+
+                textarea.addEventListener("keydown", function(event) {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        form.submit();
+                    }
+                });
+            });
+        </script>
     </head>
     <body>
-        <h2>カジュアル翻訳ツール</h2>
-        <form method="POST">
-            <textarea name="text" placeholder="日本語または英語を入力してください...">{{ request.form.text or '' }}</textarea><br>
-            <input type="submit" value="翻訳＆カジュアル変換">
-        </form>
-        {% if result %}
-        <div class="result">
-            {{ result|safe }}
+        <div class="container">
+            <h1>カジュアル翻訳ツール</h1>
+            
+            <!-- 入力フォーム -->
+            <form method="POST">
+                <div class="input-container">
+                    <textarea name="input_text" rows="6" placeholder="日本語または英語を入力してください...">{{ input_text }}</textarea><br><br>
+                </div>
+                <button type="submit">変換</button>
+            </form>
+
+            <!-- エラーメッセージ -->
+            {% if error %}
+                <p class="error">{{ error }}</p>
+            {% endif %}
+
+            <!-- 変換結果表示 -->
+            {% if formal_translation %}
+            <div class="result-container">
+                <h2>変換結果：</h2>
+                <p><strong>変換前（入力）：</strong> {{ input_text }}</p>
+                <p><strong>フォーマルな翻訳：</strong> {{ formal_translation }}</p>
+                <p><strong>カジュアルな翻訳：</strong> {{ casual_translation }}</p>
+            </div>
+            {% endif %}
         </div>
-        {% endif %}
     </body>
     </html>
-    """, result=result)
+    """, error=error, formal_translation=formal_translation, casual_translation=casual_translation, input_text=input_text)
+
+if __name__ == "__main__":
+    app.run(debug=True)
