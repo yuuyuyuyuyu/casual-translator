@@ -100,6 +100,13 @@ def translate_and_convert_to_casual_japanese(text):
 # ホームルートを処理
 @app.route('/', methods=['GET', 'POST'])
 def home():
+    user_input = ''
+    jp_to_en = ''
+    en_casual = ''
+    en_to_jp = ''
+    jp_casual = ''
+    error = ''
+    
     if request.method == 'POST':
         user_input = request.form.get('user_input', '').strip()
         
@@ -107,17 +114,15 @@ def home():
             if any([char.isalpha() for char in user_input]):
                 if user_input.isascii():  # 英語
                     jp_to_en, en_casual = translate_and_convert_to_casual_japanese(user_input)
-                    return render_template('index.html', jp_to_en=jp_to_en, en_casual=en_casual, input_text=user_input)
                 else:  # 日本語
                     en_to_jp, jp_casual = translate_and_convert_to_casual_english(user_input)
-                    return render_template('index.html', en_to_jp=en_to_jp, jp_casual=jp_casual, input_text=user_input)
             else:
-                return render_template('index.html', error="無効な入力です。英語または日本語を入力してください。")
+                error = "無効な入力です。英語または日本語を入力してください。"
         else:
-            return render_template('index.html', error="入力が空です。もう一度試してください。")
+            error = "入力が空です。もう一度試してください。"
     
     # GETリクエストの場合は空フォームを表示
-    return render_template('index.html')
+    return render_template('index.html', user_input=user_input, jp_to_en=jp_to_en, en_casual=en_casual, en_to_jp=en_to_jp, jp_casual=jp_casual, error=error)
 
 if __name__ == "__main__":
     app.run(debug=True)
