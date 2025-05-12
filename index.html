@@ -2,71 +2,108 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>カジュアル翻訳ツール</title>
+  <title>カジュアル翻訳</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #f2f2f2;
+      background-color: #f4f4f4;
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
       text-align: center;
-      padding: 50px;
+      background-color: #ffffff;
+      padding: 20px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      width: 80%;
+      max-width: 600px;
     }
 
     h1 {
-      font-size: 2em;
-      margin-bottom: 30px;
-    }
-
-    form {
-      margin-bottom: 20px;
+      color: #333;
     }
 
     textarea {
-      width: 60%;
-      height: 100px;
-      font-size: 1em;
+      width: 100%;
       padding: 10px;
-      border-radius: 10px;
+      font-size: 16px;
+      border-radius: 4px;
       border: 1px solid #ccc;
-      resize: none;
+      resize: vertical;
     }
 
     button {
-      margin-top: 20px;
-      padding: 12px 30px;
-      font-size: 1em;
-      border: none;
-      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
       background-color: #4CAF50;
       color: white;
+      border: none;
+      border-radius: 4px;
       cursor: pointer;
-      transition: background-color 0.3s ease;
+      margin-top: 10px;
     }
 
     button:hover {
       background-color: #45a049;
     }
 
-    .result {
-      margin-top: 30px;
-      font-size: 1.1em;
-      color: #333;
+    .result-container {
+      margin-top: 20px;
+    }
+
+    .result-container p {
+      font-size: 16px;
+      color: #555;
+    }
+
+    .input-container, .result-container {
+      margin-bottom: 20px;
+    }
+
+    .input-container {
+      background-color: #fafafa;
+      border: 1px solid #ddd;
+      padding: 10px;
+    }
+
+    .error {
+      color: red;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-  <h1>カジュアル翻訳ツール</h1>
-  <form method="post">
-    <textarea name="text" placeholder="日本語または英語を入力してください...">{{ request.form.text or '' }}</textarea>
-    <div>
-      <button name="action" value="auto">翻訳＆カジュアル変換（自動判定）</button>
-    </div>
-  </form>
+  <div class="container">
+    <h1>カジュアル翻訳ツール</h1>
+    
+    <!-- 入力フォーム -->
+    <form method="POST">
+      <div class="input-container">
+        <textarea name="input_text" rows="6" placeholder="日本語または英語を入力してください...">{{ input_text }}</textarea><br><br>
+      </div>
+      <button type="submit">変換</button>
+    </form>
 
-  {% if result %}
-  <div class="result">
-    <h2>変換結果</h2>
-    <p>{{ result }}</p>
+    <!-- エラーメッセージ -->
+    {% if error %}
+      <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <!-- 変換結果表示 -->
+    {% if formal_translation %}
+      <div class="result-container">
+        <h2>変換結果：</h2>
+        <p><strong>変換前（入力）：</strong> {{ input_text }}</p>
+        <p><strong>フォーマルな翻訳：</strong> {{ formal_translation }}</p>
+        <p><strong>カジュアルな翻訳：</strong> {{ casual_translation }}</p>
+      </div>
+    {% endif %}
   </div>
-  {% endif %}
 </body>
-</html>
+
+
