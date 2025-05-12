@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 from flask import Flask, render_template, request
 import deepl
 import requests
@@ -234,4 +234,3 @@ import os
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
->>>>>>> cf5fd31251d5283462f9df0f3102fe802dc97ad2
