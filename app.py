@@ -66,56 +66,73 @@ def index():
     <html lang="ja">
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>カジュアル翻訳ツール</title>
         <style>
             body {
-                font-family: Arial, sans-serif;
-                background-color: #f4f4f4;
+                font-family: "Arial", sans-serif;
+                background: #f4f4f4;
                 margin: 0;
-                height: 100vh;
-                display: flex;
-                justify-content: center;
-                align-items: center;
+                padding: 20px;
             }
 
             .container {
-                text-align: center;
-                background-color: #ffffff;
-                padding: 30px;  /* パディングを大きくしました */
-                box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);  /* シャドウを強調 */
-                border-radius: 10px;  /* 角を丸くしました */
-                width: 90%;  /* フレームの幅を広げました */
-                max-width: 800px;  /* 最大幅を広げました */
-            }
-
-            h1 {
-                color: #333;
-                font-size: 36px;
-                margin-bottom: 20px;
+                max-width: 800px;
+                background: #fff;
+                padding: 30px;
+                margin: auto;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             }
 
             textarea {
                 width: 100%;
-                padding: 10px;
-                font-size: 16px;
-                border-radius: 4px;
+                padding: 12px;
+                font-size: 1rem;
+                margin-bottom: 10px;
+                border-radius: 5px;
                 border: 1px solid #ccc;
                 resize: vertical;
             }
 
             button {
                 padding: 10px 20px;
-                font-size: 16px;
-                background-color: #4CAF50;
+                font-size: 1rem;
+                background: #4CAF50;
                 color: white;
                 border: none;
-                border-radius: 4px;
                 cursor: pointer;
-                margin-top: 10px;
+                border-radius: 5px;
             }
 
             button:hover {
-                background-color: #45a049;
+                background: #45a049;
+            }
+
+            #loading {
+                margin: 10px 0;
+                display: none;
+                color: #555;
+            }
+
+            #progress-bar {
+                height: 6px;
+                background: #ccc;
+                width: 100%;
+                border-radius: 5px;
+                overflow: hidden;
+                display: none;
+            }
+
+            #progress-bar-fill {
+                height: 100%;
+                background: #4CAF50;
+                width: 0%;
+            }
+
+            .error {
+                color: red;
+                margin-top: 10px;
             }
 
             .result-container {
@@ -126,67 +143,80 @@ def index():
                 font-size: 16px;
                 color: #555;
             }
-
-            .input-container, .result-container {
-                margin-bottom: 20px;
-            }
-
-            .input-container {
-                background-color: #fafafa;
-                border: 1px solid #ddd;
-                padding: 10px;
-            }
-
-            .error {
-                color: red;
-                margin-top: 10px;
-            }
         </style>
         <script>
-            // Enterキーでフォーム送信
-            document.addEventListener("DOMContentLoaded", function() {
-                const form = document.querySelector("form");
-                const textarea = document.querySelector("textarea");
-
-                textarea.addEventListener("keydown", function(event) {
-                    if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
-                        form.submit();
-                    }
-                });
+            // エンターキーでも実行可能に
+            document.getElementById("sentenceInput").addEventListener("keydown", function (e) {
+                if (e.key === "Enter") {
+                    analyze();
+                }
             });
+
+            function analyze() {
+                const sentence = document.getElementById("sentenceInput").value.trim();
+                if (!sentence) {
+                    alert("入力してください。");
+                    return;
+                }
+
+                const loading = document.getElementById("loading");
+                const progressBar = document.getElementById("progress-bar");
+                const progressFill = document.getElementById("progress-bar-fill");
+                const resultDiv = document.getElementById("result");
+
+                // 初期化
+                loading.style.display = "block";
+                progressBar.style.display = "block";
+                resultDiv.innerHTML = "";
+                progressFill.style.width = "0%";
+
+                // 疑似プログレスバー（実際はAPI処理を待つ）
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress = Math.min(progress + 10, 90);
+                    progressFill.style.width = progress + "%";
+                }, 300);
+
+                fetch("/analyze", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({sentence})
+                })
+                .then(res => res.json())
+                .then(data => {
+                    clearInterval(interval);
+                    progressFill.style.width = "100%";
+                    loading.style.display = "none";
+                    if (data.result) {
+                        resultDiv.innerHTML = "<pre>" + data.result + "</pre>";  // 修正箇所
+                    } else {
+                        resultDiv.innerHTML = "<p>解析に失敗しました。</p>";
+                    }
+                })
+                .catch(error => {
+                    clearInterval(interval);
+                    loading.style.display = "none";
+                    progressBar.style.display = "none";
+                    resultDiv.innerHTML = "<p>エラーが発生しました。</p>";
+                    console.error(error);
+                });
+            }
         </script>
     </head>
     <body>
         <div class="container">
             <h1>カジュアル翻訳ツール</h1>
-            
-            <!-- 入力フォーム -->
-            <form method="POST">
-                <div class="input-container">
-                    <textarea name="input_text" rows="6" placeholder="日本語または英語を入力してください...">{{ input_text }}</textarea><br><br>
-                </div>
-                <button type="submit">変換</button>
-            </form>
+            <textarea id="sentenceInput" placeholder="日本語または英語を入力してください...">{{ input_text }}</textarea><br><br>
+            <button onclick="analyze()">変換</button>
 
-            <!-- エラーメッセージ -->
-            {% if error %}
-                <p class="error">{{ error }}</p>
-            {% endif %}
+            <div id="loading">変換中です...</div>
+            <div id="progress-bar"><div id="progress-bar-fill"></div></div>
 
-            <!-- 変換結果表示 -->
-            {% if formal_translation %}
-            <div class="result-container">
-                <h2>変換結果：</h2>
-                <p><strong>変換前（入力）：</strong> {{ input_text }}</p>
-                <p><strong>フォーマルな翻訳：</strong> {{ formal_translation }}</p>
-                <p><strong>カジュアルな翻訳：</strong> {{ casual_translation }}</p>
-            </div>
-            {% endif %}
+            <div id="result"></div>
         </div>
     </body>
     </html>
-    """, error=error, formal_translation=formal_translation, casual_translation=casual_translation, input_text=input_text)
+    """, error=error, input_text=input_text)
 
 if __name__ == "__main__":
     app.run(debug=True)
