@@ -1,6 +1,0 @@
-# Chromeのキャッシュなどを無視
-AppData/
-*.pyc
-__pycache__/
-.env
-*.log
