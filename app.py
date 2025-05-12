@@ -1,15 +1,16 @@
-from flask import Flask, render_template, request
 import deepl
 import requests
 import json
+import os
 
-# DEEPLとPaLMのAPIキー
-DEEPL_API_KEY = "229b5cbc-ef03-4d61-b638-843da6e03cee:fx"
-PALM_API_KEY = "AIzaSyBdUuk7kdfb7wijwFRue9wRIjluEcFms6o"
+# 環境変数からAPIキーを取得
+DEEPL_API_KEY = os.getenv("DEEPL_API_KEY", "229b5cbc-ef03-4d61-b638-843da6e03cee:fx")  # 環境変数から取得（指定がない場合、デフォルト値）
+PALM_API_KEY = os.getenv("PALM_API_KEY", "AIzaSyBdUuk7kdfb7wijwFRue9wRIjluEcFms6o")  # 環境変数から取得（指定がない場合、デフォルト値）
+
+if not DEEPL_API_KEY or not PALM_API_KEY:
+    raise ValueError("APIキーが設定されていません。環境変数を確認してください。")
 
 translator = deepl.Translator(DEEPL_API_KEY)
-
-app = Flask(__name__)
 
 # PaLM APIを使って日本語をカジュアルに変換
 def convert_to_casual_japanese(formal_text):
@@ -30,11 +31,15 @@ def convert_to_casual_japanese(formal_text):
     response = requests.post(url, headers=headers, json=body)
     result = response.json()
 
+    if response.status_code != 200 or "candidates" not in result:
+        print("Gemini API エラー:", response.status_code)
+        print("レスポンス全文:", json.dumps(result, indent=2, ensure_ascii=False))
+        return "(エラーが発生しました)"
+
     try:
         return result["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
         print("Geminiの応答エラー:", e)
-        print("レスポンス全文:", json.dumps(result, indent=2, ensure_ascii=False))
         return "(エラーが発生しました)"
 
 # PaLM APIを使って英語をカジュアルに変換
@@ -56,11 +61,15 @@ def convert_to_casual_english(formal_text):
     response = requests.post(url, headers=headers, json=body)
     result = response.json()
 
+    if response.status_code != 200 or "candidates" not in result:
+        print("Gemini API エラー:", response.status_code)
+        print("レスポンス全文:", json.dumps(result, indent=2, ensure_ascii=False))
+        return "(エラーが発生しました)"
+
     try:
         return result["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
         print("Geminiの応答エラー:", e)
-        print("レスポンス全文:", json.dumps(result, indent=2, ensure_ascii=False))
         return "(エラーが発生しました)"
 
 # 日本語から英語に翻訳＋英語をカジュアルに変換
@@ -68,50 +77,43 @@ def translate_and_convert_to_casual_english(text):
     # 日本語から英語に翻訳
     result = translator.translate_text(text, target_lang="EN-US")
     jp_to_en = result.text.strip()
-
+    
     # 英語をカジュアルに変換
     en_casual = convert_to_casual_english(jp_to_en)
-
-    return jp_to_en, en_casual
+    
+    print("\n【DeepL日本語から英語訳】: ")
+    print(jp_to_en)
+    print("\n【カジュアルな英語訳】: ")
+    print(en_casual + "\n")
 
 # 英語から日本語に翻訳＋日本語をカジュアルに変換
 def translate_and_convert_to_casual_japanese(text):
     # 英語から日本語に翻訳
     result = translator.translate_text(text, target_lang="JA")
     en_to_jp = result.text.strip()
-
+    
     # 日本語をカジュアルに変換
     jp_casual = convert_to_casual_japanese(en_to_jp)
-
-    return en_to_jp, jp_casual
-
-@app.route("/", methods=["GET", "POST"])
-def index():
-    direction = formal_translation = casual_translation = ""
-    input_text = ""
     
-    if request.method == "POST":
-        input_text = request.form["input_text"].strip()
-        
-        if not input_text:
-            return render_template("index.html", error="入力が空です。")
-        
-        # 日本語または英語を判定し、翻訳とカジュアル変換を実行
-        if any([char.isalpha() for char in input_text]):
-            if input_text.isascii():  # 英語
-                direction = "英語 → 日本語"
-                formal_translation, casual_translation = translate_and_convert_to_casual_japanese(input_text)
-            else:  # 日本語
-                direction = "日本語 → 英語"
-                formal_translation, casual_translation = translate_and_convert_to_casual_english(input_text)
-    
-    return render_template("index.html", direction=direction, 
-                           formal_translation=formal_translation, 
-                           casual_translation=casual_translation, 
-                           input_text=input_text)
-
-import os
+    print("\n【DeepL英語から日本語訳】: ")
+    print(en_to_jp)
+    print("\n【カジュアルな日本語訳】: ")
+    print(jp_casual + "\n")
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    while True:
+        user_input = input("日本語または英語を入力してください（終了するには 'exit'）: ").strip()
+        
+        if user_input.lower() == "exit":
+            break
+        
+        if not user_input:
+            print("※ 空の入力は無視されました。\n")
+            continue
+
+        # 日本語が含まれているか、英語が含まれているかをチェック
+        if any([char.isalpha() for char in user_input]):
+            if user_input.isascii():  # 英語
+                translate_and_convert_to_casual_japanese(user_input)
+            else:  # 日本語
+                translate_and_convert_to_casual_english(user_input)
