@@ -90,6 +90,8 @@ def index():
 
             h1 {
                 color: #333;
+                font-size: 36px;  /* フォントサイズを大きくしました */
+                margin-bottom: 20px;
             }
 
             textarea {
