@@ -2,17 +2,9 @@ import deepl
 import requests
 import json
 import os
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 
 app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return render_template('index.html')  # index.html が templates フォルダにある場合
-
-if __name__ == '__main__':
-    app.run(debug=True)
-
 
 # 環境変数からAPIキーを取得
 DEEPL_API_KEY = os.getenv("DEEPL_API_KEY", "229b5cbc-ef03-4d61-b638-843da6e03cee:fx")  # 環境変数から取得（指定がない場合、デフォルト値）
@@ -39,23 +31,19 @@ def convert_to_casual_japanese(formal_text):
             }
         ]
     }
-    
+    response = requests.post(url, headers=headers, json=body)
+    result = response.json()
+
+    if response.status_code != 200 or "candidates" not in result:
+        print("Gemini API エラー:", response.status_code)
+        print("レスポンス全文:", json.dumps(result, indent=2, ensure_ascii=False))
+        return "(エラーが発生しました)"
+
     try:
-        response = requests.post(url, headers=headers, json=body)
-        response.raise_for_status()  # HTTPエラーが発生した場合、例外を発生させる
-        result = response.json()
-        
-        if "candidates" not in result:
-            print("Gemini API エラー: 'candidates' 不存在")
-            return "(エラーが発生しました)"
-        
         return result["candidates"][0]["content"]["parts"][0]["text"]
-    
-    except requests.exceptions.HTTPError as http_err:
-        print(f"HTTPエラー発生: {http_err}")
-    except Exception as err:
-        print(f"エラー発生: {err}")
-    return "(エラーが発生しました)"
+    except Exception as e:
+        print("Geminiの応答エラー:", e)
+        return "(エラーが発生しました)"
 
 # PaLM APIを使って英語をカジュアルに変換
 def convert_to_casual_english(formal_text):
@@ -73,74 +61,63 @@ def convert_to_casual_english(formal_text):
             }
         ]
     }
-    
-    try:
-        response = requests.post(url, headers=headers, json=body)
-        response.raise_for_status()  # HTTPエラーが発生した場合、例外を発生させる
-        result = response.json()
+    response = requests.post(url, headers=headers, json=body)
+    result = response.json()
 
-        if "candidates" not in result:
-            print("Gemini API エラー: 'candidates' 不存在")
-            return "(エラーが発生しました)"
-        
+    if response.status_code != 200 or "candidates" not in result:
+        print("Gemini API エラー:", response.status_code)
+        print("レスポンス全文:", json.dumps(result, indent=2, ensure_ascii=False))
+        return "(エラーが発生しました)"
+
+    try:
         return result["candidates"][0]["content"]["parts"][0]["text"]
-    
-    except requests.exceptions.HTTPError as http_err:
-        print(f"HTTPエラー発生: {http_err}")
-    except Exception as err:
-        print(f"エラー発生: {err}")
-    return "(エラーが発生しました)"
+    except Exception as e:
+        print("Geminiの応答エラー:", e)
+        return "(エラーが発生しました)"
 
 # 日本語から英語に翻訳＋英語をカジュアルに変換
 def translate_and_convert_to_casual_english(text):
-    try:
-        # 日本語から英語に翻訳
-        result = translator.translate_text(text, target_lang="EN-US")
-        jp_to_en = result.text.strip()
-        
-        # 英語をカジュアルに変換
-        en_casual = convert_to_casual_english(jp_to_en)
-        
-        print("\n【DeepL日本語から英語訳】: ")
-        print(jp_to_en)
-        print("\n【カジュアルな英語訳】: ")
-        print(en_casual + "\n")
-        
-    except Exception as e:
-        print(f"エラー発生: {e}")
+    # 日本語から英語に翻訳
+    result = translator.translate_text(text, target_lang="EN-US")
+    jp_to_en = result.text.strip()
+    
+    # 英語をカジュアルに変換
+    en_casual = convert_to_casual_english(jp_to_en)
+    
+    return jp_to_en, en_casual
 
 # 英語から日本語に翻訳＋日本語をカジュアルに変換
 def translate_and_convert_to_casual_japanese(text):
-    try:
-        # 英語から日本語に翻訳
-        result = translator.translate_text(text, target_lang="JA")
-        en_to_jp = result.text.strip()
+    # 英語から日本語に翻訳
+    result = translator.translate_text(text, target_lang="JA")
+    en_to_jp = result.text.strip()
+    
+    # 日本語をカジュアルに変換
+    jp_casual = convert_to_casual_japanese(en_to_jp)
+    
+    return en_to_jp, jp_casual
+
+# ホームルートを処理
+@app.route('/', methods=['GET', 'POST'])
+def home():
+    if request.method == 'POST':
+        user_input = request.form.get('user_input', '').strip()
         
-        # 日本語をカジュアルに変換
-        jp_casual = convert_to_casual_japanese(en_to_jp)
-        
-        print("\n【DeepL英語から日本語訳】: ")
-        print(en_to_jp)
-        print("\n【カジュアルな日本語訳】: ")
-        print(jp_casual + "\n")
-        
-    except Exception as e:
-        print(f"エラー発生: {e}")
+        if user_input:
+            if any([char.isalpha() for char in user_input]):
+                if user_input.isascii():  # 英語
+                    jp_to_en, en_casual = translate_and_convert_to_casual_japanese(user_input)
+                    return render_template('index.html', jp_to_en=jp_to_en, en_casual=en_casual, input_text=user_input)
+                else:  # 日本語
+                    en_to_jp, jp_casual = translate_and_convert_to_casual_english(user_input)
+                    return render_template('index.html', en_to_jp=en_to_jp, jp_casual=jp_casual, input_text=user_input)
+            else:
+                return render_template('index.html', error="無効な入力です。英語または日本語を入力してください。")
+        else:
+            return render_template('index.html', error="入力が空です。もう一度試してください。")
+    
+    # GETリクエストの場合は空フォームを表示
+    return render_template('index.html')
 
 if __name__ == "__main__":
-    while True:
-        user_input = input("日本語または英語を入力してください（終了するには 'exit'）: ").strip()
-        
-        if user_input.lower() == "exit":
-            break
-        
-        if not user_input:
-            print("※ 空の入力は無視されました。\n")
-            continue
-
-        # 日本語が含まれているか、英語が含まれているかをチェック
-        if any([char.isalpha() for char in user_input]):
-            if user_input.isascii():  # 英語
-                translate_and_convert_to_casual_japanese(user_input)
-            else:  # 日本語
-                translate_and_convert_to_casual_english(user_input)
+    app.run(debug=True)
