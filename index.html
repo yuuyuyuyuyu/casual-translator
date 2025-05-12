@@ -8,12 +8,12 @@
 <body>
     <h1>日本語または英語を入力してください</h1>
     <form action="/" method="POST">
-        <input type="text" name="user_input" placeholder="テキストを入力" required>
+        <input type="text" name="user_input" value="{{ user_input }}" placeholder="テキストを入力" required>
         <button type="submit">送信</button>
     </form>
 
-    {% if input_text %}
-    <h2>入力: {{ input_text }}</h2>
+    {% if user_input %}
+    <h2>入力: {{ user_input }}</h2>
     {% if jp_to_en %}
     <p><strong>DeepL 日本語 → 英語:</strong> {{ jp_to_en }}</p>
     <p><strong>カジュアルな英語:</strong> {{ en_casual }}</p>
