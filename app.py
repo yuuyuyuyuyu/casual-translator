@@ -81,16 +81,16 @@ def index():
             .container {
                 text-align: center;
                 background-color: #ffffff;
-                padding: 20px;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-                border-radius: 8px;
-                width: 80%;
-                max-width: 600px;
+                padding: 30px;  /* パディングを大きくしました */
+                box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);  /* シャドウを強調 */
+                border-radius: 10px;  /* 角を丸くしました */
+                width: 90%;  /* フレームの幅を広げました */
+                max-width: 800px;  /* 最大幅を広げました */
             }
 
             h1 {
                 color: #333;
-                font-size: 36px;  /* フォントサイズを大きくしました */
+                font-size: 36px;
                 margin-bottom: 20px;
             }
 
